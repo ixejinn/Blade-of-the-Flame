@@ -37,12 +37,13 @@ private:
 	float moveSpeed_ = 5.f;
 	float attractionRadius_ = 40.f;
 
-	// Level up�� ���� �ʿ��� ����ġ ������ (%)
 	float expRequirement_ = 30.f;
 	float hpGrowthRate_ = 20.f;
 
 	//Basic_Attack
 	GameObject* melee_Attack = nullptr;
+	GameObject* melee_Attack2 = nullptr;
+	GameObject* gtae_Attack = nullptr;
 	GameObject* double_flame_Attack = nullptr;
 	GameObject* penetrable_double_flame_Attack = nullptr;
 

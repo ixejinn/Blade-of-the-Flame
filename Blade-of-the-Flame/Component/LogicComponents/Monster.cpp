@@ -10,7 +10,13 @@
 #include "../../Utils/Utils.h"
 #include "../AnimationComp.h"
 #include "../LogicComponents/Skills/shield.h"
+<<<<<<< Updated upstream
+=======
+#include "Skills/Melee2.h"
+#include "Skills/grab.h"
+>>>>>>> Stashed changes
 
+#include <iostream>
 
 void Monster::SetAnimation()
 {
@@ -68,6 +74,7 @@ void Monster::RemoveFromManager()
 
 void Monster::Update()
 {
+	std::cout << hp_ << std::endl;
 	AEVec2 playerPos = playerTrans_->GetPosition();
 	AEVec2 pos = trans_->GetPosition();
 	AEVec2 moveDir = playerPos - pos, unitMoveDir;
@@ -160,6 +167,21 @@ void Monster::OnCollision(CollisionEvent* event)
 		AEVec2 velocity = rb_->GetVelocity();
 		rb_->ClearVelocity();
 		rb_->AddVelocity(velocity * -knockback_);
+
+		state_ = HURT;
+
+		return;
+	}
+	
+	Melee2Attack* melee2 = event->from_->GetComponent<Melee2Attack>();
+	if (melee2 != nullptr && melee2->mode == Melee2Attack::fire)
+	{
+		hp_ -= melee2->GetDmg();
+		GameObjectManager::GetInstance().GetObjectA("player")->GetComponent<Player>()->SkillGage += 0.1;
+
+		AEVec2 velocity = rb_->GetVelocity();
+		rb_->ClearVelocity();
+		rb_->AddVelocity(velocity * -knockback_ * 2.5);
 
 		state_ = HURT;
 

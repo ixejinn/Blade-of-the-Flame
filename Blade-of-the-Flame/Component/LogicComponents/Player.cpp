@@ -17,15 +17,22 @@
 
 int Player::count = 0;
 
-#include "../LogicComponents/Skills/Meteor.h"
-#include "../LogicComponents/Skills/Flame.h"
-#include "../LogicComponents/Skills/doubleFlameL.h"
-#include "../LogicComponents/Skills/doubleFlameR.h"
-#include "../LogicComponents/Skills/PenetrableDoubleFlameL.h"
-#include "../LogicComponents/Skills/PenetrableDoubleFlameR.h"
-#include "../LogicComponents/Skills/Shield.h"
-#include "../LogicComponents/Skills/boomerang.h"
-#include "../LogicComponents/Skills/bubble.h"
+#include "Skills/Meteor.h"
+#include "Skills/Flame.h"
+#include "Skills/doubleFlameL.h"
+#include "Skills/doubleFlameR.h"
+#include "Skills/PenetrableDoubleFlameL.h"
+#include "Skills/PenetrableDoubleFlameR.h"
+#include "Skills/Shield.h"
+#include "Skills/boomerang.h"
+#include "Skills/bubble.h"
+#include "Skills/gtae.h"
+#include "Skills/grab.h"
+#include "Skills/Recall.h"
+#include "Skills/oppositeFlame.h"
+#include "Skills/Melee2.h"
+#include "Skills/Pet.h"
+
 #include "../../Manager/Camera.h"
 
 void Player::SetAnimation()
@@ -58,8 +65,8 @@ void Player::SetAnimation()
 
 Player::Player(GameObject* owner) : LogicComponent(owner)
 {
-	level_ = 10;
-	SkillGage = 90;
+	level_ = 1;
+	SkillGage = 0;
 	/* Set Player component */
 	owner_->AddComponent<CircleCollider>();
 	owner_->AddComponent<BoxCollider>();
@@ -103,11 +110,23 @@ Player::Player(GameObject* owner) : LogicComponent(owner)
 	melee_Attack->AddComponent<MeleeAttack>();
 	melee_Attack->GetComponent<MeleeAttack>()->SetPlayer(owner_);
 
+	melee_Attack2 = GameObjectManager::GetInstance().CreateObject("MeleeAttack2");
+	melee_Attack2->AddComponent<Melee2Attack>();
+	melee_Attack2->GetComponent<Melee2Attack>()->SetPlayer(owner_);
+
+	gtae_Attack = GameObjectManager::GetInstance().CreateObject("GtaeAttack");
+	gtae_Attack->AddComponent<Gtae>();
+	gtae_Attack->GetComponent<Gtae>()->SetPlayer(owner_);
+
+	/* Special ATTACK GameObject */
 	meteor = GameObjectManager::GetInstance().CreateObject("MeteorAttack");
 	meteor->AddComponent<Meteor>();
 	meteor->GetComponent<Meteor>()->SetPlayer(owner_);
 
-	/* Special ATTACK GameObject */
+	grab_Attack = GameObjectManager::GetInstance().CreateObject("Grab");
+	grab_Attack->AddComponent<Grab>();
+	grab_Attack->GetComponent<Grab>()->SetPlayer(owner_);
+
 	shield_Attack = GameObjectManager::GetInstance().CreateObject("Shield");
 	shield_Attack->AddComponent<Shield>();
 	shield_Attack->GetComponent<Shield>()->SetPlayer(owner_);
@@ -120,6 +139,14 @@ Player::Player(GameObject* owner) : LogicComponent(owner)
 	fire_bubble_Attack->AddComponent<bubble>();
 	fire_bubble_Attack->GetComponent<bubble>()->SetPlayer(owner_);
 
+	TimeRecall = GameObjectManager::GetInstance().CreateObject("TimeRecall");
+	TimeRecall->AddComponent<Recall>();
+	TimeRecall->GetComponent<Recall>()->SetPlayer(owner_);
+
+	Pet_ = GameObjectManager::GetInstance().CreateObject("Pet");
+	Pet_->AddComponent<Pet>();
+	Pet_->GetComponent<Pet>()->SetPlayer(owner_);
+
 	//----------------------------------//
 	curAttack_ = melee_Attack->GetComponent<MeleeAttack>();
 }
@@ -131,7 +158,8 @@ void Player::RemoveFromManager()
 
 void Player::Update()
 {
-	std::cout << "스킬 게이지 : " << SkillGage << std::endl;
+	TimeRecall->active_ = true;
+	//std::cout << "스킬 게이지 : " << SkillGage << std::endl;
 	/* CHECK */
 	// Level up
 	if (exp_ >= maxExp_)
@@ -152,12 +180,8 @@ void Player::Update()
 	static State preState = IDLE;
 	State curState = IDLE;
 	Direction curDir = dir_;
-	bool lBtn = false;
 	if (AEInputCheckCurr(AEVK_LBUTTON))
-	{
-		lBtn = true;
 		curState = ATTACK;
-	}
 	else if (hp_ < preHp)
 	{
 		curState = HURT;
@@ -175,7 +199,7 @@ void Player::Update()
 	if (1 <= level_ && level_ < 4)
 	{
 		meleeCool += AEFrameRateControllerGetFrameRate();
-		if (SkillGage >= 150)
+		if (SkillGage >= maxSkillGage)
 		{
 			//쉴드스킬
 			curAttack_ = shield_Attack->GetComponent<Shield>();
@@ -184,11 +208,27 @@ void Player::Update()
 		}
 		else
 		{
+			//curAttack_ = nullptr;
+			//if (melee_Attack->GetComponent<MeleeAttack>()->GetCooldown() <= meleeCool &&
+			//	AEInputCheckCurr(AEVK_LBUTTON))
+			//{
+			//	curAttack_ = melee_Attack->GetComponent<MeleeAttack>();
+			//	curAttack_->On();
+			//}
+
+			//curAttack_ = nullptr;
+			//if (melee_Attack2->GetComponent<Melee2Attack>()->GetCooldown() <= meleeCool &&
+			//	AEInputCheckCurr(AEVK_LBUTTON))
+			//{
+			//	curAttack_ = melee_Attack2->GetComponent<Melee2Attack>();
+			//	curAttack_->On();
+			//}
+
 			curAttack_ = nullptr;
-			if (melee_Attack->GetComponent<MeleeAttack>()->GetCooldown() <= meleeCool &&
+			if (gtae_Attack->GetComponent<Gtae>()->GetCooldown() <= meleeCool &&
 				AEInputCheckCurr(AEVK_LBUTTON))
 			{
-				curAttack_ = melee_Attack->GetComponent<MeleeAttack>();
+				curAttack_ = gtae_Attack->GetComponent<Gtae>();
 				curAttack_->On();
 			}
 		}
@@ -196,33 +236,66 @@ void Player::Update()
 	else if (4 <= level_ && level_ < 7)
 	{
 		flameCool += AEFrameRateControllerGetFrameRate();
-		if (SkillGage >= 100)
+		if (SkillGage >= maxSkillGage)
 		{
-			//부메랑 스킬
-			curAttack_ = boomerang_Attack->GetComponent<boomerang>();
-			curAttack_->On();
-			SkillGage = 0;
+			////부메랑 스킬
+			//curAttack_ = boomerang_Attack->GetComponent<boomerang>();
+			//curAttack_->On();
+			//SkillGage = 0;
+
+			//if (AEInputCheckCurr(AEVK_LBUTTON))
+			//{
+			//	curAttack_ = grab_Attack->GetComponent<Grab>();
+			//	curAttack_->On();
+			//}
+
+			//if (AEInputCheckCurr(AEVK_LBUTTON))
+			//{
+			//	curAttack_ = TimeRecall->GetComponent<Recall>();
+			//	curAttack_->On();
+			//}
+
+			if (AEInputCheckCurr(AEVK_LBUTTON))
+			{
+				curAttack_ = Pet_->GetComponent<Pet>();
+				curAttack_->On();
+				SkillGage = 0;
+			}
 		}
 		else
 		{
-			if (AEInputCheckCurr(AEVK_LBUTTON) && flameCool >= 3000)
-			{
-				GameObject* flame_Attack = nullptr;
-				flame_Attack = GameObjectManager::GetInstance().CreateObject("FlameAttack" + std::to_string(count));
-				count++;
-				flame_Attack->AddComponent<Flame>();
-				flame_Attack->GetComponent<Flame>()->SetPlayer(owner_);
-				curAttack_ = flame_Attack->GetComponent<Flame>();
-				curAttack_->On();
+			//if (AEInputCheckCurr(AEVK_LBUTTON) && flameCool >= 3000)
+			//{
+			//	GameObject* flame_Attack = nullptr;
+			//	flame_Attack = GameObjectManager::GetInstance().CreateObject("FlameAttack" + std::to_string(count));
+			//	count++;
+			//	flame_Attack->AddComponent<Flame>();
+			//	flame_Attack->GetComponent<Flame>()->SetPlayer(owner_);
+			//	curAttack_ = flame_Attack->GetComponent<Flame>();
+			//	curAttack_->On();
 
-				flameCool = 0;
-			}
+			//	flameCool = 0;
+			//}
+
+			//if (AEInputCheckCurr(AEVK_LBUTTON) && flameCool >= 3000)
+			//{
+			//	GameObject* oflame_Attack = nullptr;
+			//	oflame_Attack = GameObjectManager::GetInstance().CreateObject("oFlameAttack" + std::to_string(count));
+			//	count++;
+			//	oflame_Attack->AddComponent<oFlame>();
+			//	oflame_Attack->GetComponent<oFlame>()->SetPlayer(owner_);
+			//	curAttack_ = oflame_Attack->GetComponent<oFlame>();
+			//	curAttack_->On();
+
+			//	flameCool = 0;
+			//}
 		}
 	}
 	else if (7 <= level_ && level_ < 10)
 	{
+		TimeRecall->active_ = false;
 		doubleflameCool += AEFrameRateControllerGetFrameRate();
-		if (SkillGage >= 100)
+		if (SkillGage >= maxSkillGage)
 		{
 			// 파이어 버블
 			curAttack_ = nullptr;
@@ -260,7 +333,7 @@ void Player::Update()
 	else
 	{
 		pendoubleflameCool += AEFrameRateControllerGetFrameRate();
-		if (SkillGage >= 100)
+		if (SkillGage >= maxSkillGage)
 		{
 			//메테오
 			curAttack_ = meteor->GetComponent<Meteor>();
@@ -303,8 +376,11 @@ void Player::Update()
 	}
 
 	/* SET ANIMATION */
-	if (dir_ != curDir)
+	if (dir_ != curDir && (curDir == LEFT || curDir == RIGHT))
+	{
 		trans_->SetFlip();
+		dir_ = curDir;
+	}
 
 	if (curState == ATTACK)
 	{
@@ -330,8 +406,6 @@ void Player::Update()
 	if (curState != HURT && preState != HURT)
 		sp_->SetColor({ 0, 0, 0 });
 
-	//std::cout << dir_ << " " << curDir << std::endl;
-	dir_ = curDir;
 	preState = curState;
 }
 
@@ -375,6 +449,9 @@ void Player::LevelUp()
 
 	level_++;
 
+	if (level_ >= 4)
+		maxSkillGage = 100;
+
 	LevelUpEvent* event = new LevelUpEvent();
 	event->from_ = owner_;
 	event->level = level_;
@@ -386,7 +463,7 @@ void Player::AddHp(int hp)
 	std::cout << hp_ << " ";
 	hp_ += hp;
 	std::cout << hp_ << std::endl;
-	
+
 	if (hp_ > maxHp_)
 		hp_ = maxHp_;
 }

@@ -22,10 +22,14 @@ MeleeAttack::MeleeAttack(GameObject* owner) : BaseAttack(owner)
 		owner->GetComponent<AnimationComp>()->AddDetail("Assets/meleeAnime/" + std::to_string(i) + ".png", "Attack");
 	}
 	owner->GetComponent<AnimationComp>()->ChangeAnimation("Attack");
+<<<<<<< Updated upstream
 	owner->GetComponent<AnimationComp>()->SetTerm(300);
 	BoxCollider* col = owner_->GetComponent<BoxCollider>();
 	col->SetType(Collider::OBB_TYPE);
 	col->SetLayer(Collider::P_ATTACK);
+=======
+	owner->GetComponent<AnimationComp>()->SetTerm(100);
+>>>>>>> Stashed changes
 }
 
 MeleeAttack::~MeleeAttack()

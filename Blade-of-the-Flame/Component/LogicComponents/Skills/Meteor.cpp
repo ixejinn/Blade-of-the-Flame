@@ -58,7 +58,6 @@ void Meteor::Update()
 		owner_->GetComponent<RigidBody>()->AddVelocity(unitDir * 200);
 
 		meteorLifetime -= AEFrameRateControllerGetFrameRate();
-		std::cout << meteorLifetime <<std::endl;
 		if (meteorLifetime <= 2000)
 		{
 			if (meteorLifetime <= 0)
